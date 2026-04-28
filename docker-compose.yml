@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: taskqueue-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-taskqueue}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: taskqueue-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Optional: run the queue as one or more containers behind the same
+  # Postgres + Redis. Uncomment and `docker compose up --scale worker=3`
+  # to demo multiple worker processes on the same queue.
+  #
+  # worker:
+  #   build: .
+  #   environment:
+  #     DB_DSN: host=postgres user=admin password=password dbname=taskqueue port=5432 sslmode=disable
+  #     REDIS_ADDR: redis:6379
+  #     WORKER_COUNT: "2"
+  #   depends_on:
+  #     postgres: { condition: service_healthy }
+  #     redis: { condition: service_healthy }
+  #   ports:
+  #     - "7070-7079:7070"
+
+volumes:
+  postgres_data:
+  redis_data:
