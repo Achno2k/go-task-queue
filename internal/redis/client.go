@@ -2,16 +2,17 @@ package redis
 
 import (
 	"context"
+	"log"
 
 	"github.com/redis/go-redis/v9"
 )
 
 const (
-	MainQueueKey      = "task_queue"
-	DelayQueueKey     = "delay_queue"
-	DLQKey            = "task_queue:dlq"
-	LeaseKey          = "task_leases"
-	ProcessingPrefix  = "processing:"
+	MainQueueKey     = "task_queue"
+	DelayQueueKey    = "delay_queue"
+	DLQKey           = "task_queue:dlq"
+	LeaseKey         = "task_leases"
+	ProcessingPrefix = "processing:"
 )
 
 var Ctx = context.Background()
@@ -22,9 +23,15 @@ func ProcessingKey(workerID int) string {
 }
 
 func InitRedis(addr string) {
-	RDB = redis.NewClient(&redis.Options{
-		Addr: addr,
-	})
+	opt, err := redis.ParseURL(addr)
+	if err != nil {
+		opt = &redis.Options{Addr: addr}
+	}
+
+	RDB = redis.NewClient(opt)
+	if err := RDB.Ping(Ctx).Err(); err != nil {
+		log.Fatal("Failed to connect to Redis: ", err)
+	}
 }
 
 // small helper to keep this file dependency-free

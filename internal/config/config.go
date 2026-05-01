@@ -19,9 +19,9 @@ type Config struct {
 
 func Load() Config {
 	cfg := Config{
-		DBDSN:          getEnv("DB_DSN", "host=localhost user=admin password=password dbname=taskqueue port=5432 sslmode=disable"),
-		RedisAddr:      getEnv("REDIS_ADDR", "localhost:6379"),
-		HTTPPort:       getEnv("HTTP_PORT", "7070"),
+		DBDSN:          getEnvAny([]string{"DB_DSN", "DATABASE_URL"}, "host=localhost user=admin password=password dbname=taskqueue port=5432 sslmode=disable"),
+		RedisAddr:      getEnvAny([]string{"REDIS_ADDR", "REDIS_URL"}, "localhost:6379"),
+		HTTPPort:       getEnvAny([]string{"HTTP_PORT", "PORT"}, "7070"),
 		WorkerCount:    getEnvInt("WORKER_COUNT", 3),
 		MaxAttempts:    getEnvInt("MAX_ATTEMPTS", 3),
 		LeaseTimeout:   time.Duration(getEnvInt("LEASE_TIMEOUT", 30)) * time.Second,
@@ -37,6 +37,15 @@ func Load() Config {
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getEnvAny(keys []string, fallback string) string {
+	for _, key := range keys {
+		if v := os.Getenv(key); v != "" {
+			return v
+		}
 	}
 	return fallback
 }
