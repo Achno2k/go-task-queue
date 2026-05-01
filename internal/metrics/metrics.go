@@ -38,8 +38,10 @@ var (
 	}, []string{"queue"})
 )
 
-func TasksEnqueued(name string)              { enqueued.WithLabelValues(name).Inc() }
-func TasksProcessed(status, name string)     { processed.WithLabelValues(status, name).Inc() }
+func TasksEnqueued(name string)          { enqueued.WithLabelValues(name).Inc() }
+func TasksProcessed(status, name string) { processed.WithLabelValues(status, name).Inc() }
+
+
 func ObserveDuration(name string, d time.Duration) {
 	duration.WithLabelValues(name).Observe(d.Seconds())
 }

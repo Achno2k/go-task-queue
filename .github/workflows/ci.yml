@@ -55,10 +55,6 @@ jobs:
         env:
           DB_DSN: host=localhost user=admin password=password dbname=taskqueue port=5432 sslmode=disable
           REDIS_ADDR: localhost:6379
-        # The testcontainers-based tests bring up their own containers;
-        # they don't need the service containers above. We still keep the
-        # services running so anyone wanting to use them directly (e.g.
-        # via env vars) can.
         run: go test -tags=integration -timeout=5m ./internal/integration/...
 
       - name: Benchmarks (smoke)
