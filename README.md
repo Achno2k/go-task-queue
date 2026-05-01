@@ -2,32 +2,24 @@
 
 A distributed, persistent task queue written in Go. Producers `POST /tasks`, workers pull from Redis, results land in Postgres. Workers can crash, restart, or scale out — the queue keeps draining.
 
-```
-                  ┌──────────────┐
-   POST /tasks ──▶│  HTTP API    │── enqueue ──▶ Redis: task_queue ─┐
-                  └──────────────┘                                  │
-                         │                                          ▼
-                         │ persist                          ┌──────────────┐
-                         ▼                          claim   │ worker 1..N  │
-                  ┌──────────────┐    ◀── BLMove ─── ─────  │ (BLMove +    │
-                  │  Postgres    │                          │  lease)      │
-                  │  (tasks)     │    ◀── save status ───── └──────┬───────┘
-                  └──────────────┘                                 │
-                         ▲                                  on fail │
-                         │            ┌─────────────────┐           ▼
-                         │            │  delay_queue    │◀── ZAdd ──┘
-                         │            │  (sorted set)   │
-                         │            └────────┬────────┘
-                         │                     │ promote when due
-                         │            ┌────────▼────────┐
-                         │            │   scheduler     │── LPush ──▶ task_queue
-                         │            └─────────────────┘
-                         │
-                         │            ┌─────────────────┐
-                         └─ DEAD ─────│ task_queue:dlq  │
-                                      └─────────────────┘
+![go-task-queue system design](docs/system-design.svg)
 
-                   reaper: scans expired leases, requeues orphan tasks
+## Live demo
+
+This project is deployed on Railway with the Go service, Postgres, and Redis running as separate services.
+
+```bash
+BASE_URL="https://go-task-queue-production.up.railway.app"
+
+curl "$BASE_URL/healthz"
+
+TASK_ID=$(curl -s -X POST "$BASE_URL/tasks" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"email.send","payload":"{\"to\":\"demo@example.com\",\"subject\":\"hi\",\"body\":\"hello from railway\"}"}' \
+  | jq -r '.data.id')
+
+curl "$BASE_URL/task?id=$TASK_ID"
+curl "$BASE_URL/metrics" | grep tasks_
 ```
 
 ## What's interesting about it
@@ -87,8 +79,11 @@ All via env vars (see `.env.example`):
 | Var               | Default                             |
 |-------------------|-------------------------------------|
 | `DB_DSN`          | local Postgres on :5432             |
+| `DATABASE_URL`    | fallback for managed Postgres       |
 | `REDIS_ADDR`      | `localhost:6379`                    |
+| `REDIS_URL`       | fallback for managed Redis          |
 | `HTTP_PORT`       | `7070`                              |
+| `PORT`            | fallback for hosted platforms       |
 | `WORKER_COUNT`    | `3`                                 |
 | `MAX_ATTEMPTS`    | `3`                                 |
 | `LEASE_TIMEOUT`   | `30` (seconds)                      |
